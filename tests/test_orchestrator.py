@@ -15,7 +15,7 @@ from harness.orchestrator import (
 
 
 class DummyAgent:
-    def __init__(self, name: str, success: bool = True, output_data: dict = None):
+    def __init__(self, name: str, success: bool = True, output_data: dict | None = None):
         self.name = name
         self.success = success
         self.output_data = output_data or {}
