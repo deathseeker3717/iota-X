@@ -1,5 +1,10 @@
 """Repository Intelligence package public exports for AI Coding Harness."""
 
+from harness.repository.applier import (
+    ApplicationResult,
+    CodeApplier,
+    EditResult,
+)
 from harness.repository.context import (
     RelevantFile,
     RelevantSymbol,
@@ -22,6 +27,10 @@ from harness.repository.symbols import (
 )
 
 __all__ = [
+    # Applier
+    "CodeApplier",
+    "EditResult",
+    "ApplicationResult",
     # Symbols
     "Symbol",
     "SymbolType",

@@ -264,6 +264,51 @@ class FilesystemTool:
         file_path.write_text(new_content, encoding="utf-8")
         return True
 
+    def create_file(self, path: str, content: str = "", create_dirs: bool = True) -> bool:
+        """Create a new file with content. Fails if file already exists.
+
+        Args:
+            path: Target file path relative to root_dir.
+            content: Content to write.
+            create_dirs: Whether to create parent directories if missing.
+
+        Returns:
+            True on success.
+
+        Raises:
+            FileExistsError: If file already exists.
+        """
+        file_path = self._resolve_path(path)
+        if file_path.exists():
+            raise FileExistsError(f"File already exists: {path}")
+        if create_dirs:
+            file_path.parent.mkdir(parents=True, exist_ok=True)
+        elif not file_path.parent.exists():
+            raise FileNotFoundError(f"Parent directory does not exist for: {path}")
+        file_path.write_text(content, encoding="utf-8")
+        return True
+
+    def delete_file(self, path: str) -> bool:
+        """Delete an existing file.
+
+        Args:
+            path: File path relative to root_dir.
+
+        Returns:
+            True on success.
+
+        Raises:
+            FileNotFoundError: If file does not exist.
+            IsADirectoryError: If path is a directory.
+        """
+        file_path = self._resolve_path(path)
+        if not file_path.exists():
+            raise FileNotFoundError(f"File not found: {path}")
+        if not file_path.is_file():
+            raise IsADirectoryError(f"Path is a directory, not a file: {path}")
+        file_path.unlink()
+        return True
+
 
 # Default instance and module-level helpers
 _default_fs = FilesystemTool()
@@ -292,6 +337,16 @@ def read_file(
 def write_file(path: str, content: str, create_dirs: bool = True) -> bool:
     """Write content to file."""
     return _default_fs.write_file(path, content, create_dirs)
+
+
+def create_file(path: str, content: str = "", create_dirs: bool = True) -> bool:
+    """Create a new file."""
+    return _default_fs.create_file(path, content, create_dirs)
+
+
+def delete_file(path: str) -> bool:
+    """Delete a file."""
+    return _default_fs.delete_file(path)
 
 
 def edit_file(
@@ -386,6 +441,34 @@ def get_filesystem_tool_definitions() -> List[ToolDefinition]:
                     },
                 },
                 "required": ["path", "target", "replacement"],
+            },
+        ),
+        ToolDefinition(
+            name="create_file",
+            description="Create a new file with content. Errors if file already exists.",
+            parameters={
+                "type": "object",
+                "properties": {
+                    "path": {"type": "string", "description": "Relative file path"},
+                    "content": {"type": "string", "description": "Text content to write", "default": ""},
+                    "create_dirs": {
+                        "type": "boolean",
+                        "description": "Whether to create parent directories",
+                        "default": True,
+                    },
+                },
+                "required": ["path"],
+            },
+        ),
+        ToolDefinition(
+            name="delete_file",
+            description="Delete an existing file.",
+            parameters={
+                "type": "object",
+                "properties": {
+                    "path": {"type": "string", "description": "Relative file path"},
+                },
+                "required": ["path"],
             },
         ),
     ]

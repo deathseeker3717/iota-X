@@ -3,6 +3,8 @@
 from harness.tools.filesystem import (
     DEFAULT_EXCLUDE_PATTERNS,
     FilesystemTool,
+    create_file,
+    delete_file,
     edit_file,
     get_filesystem_tool_definitions,
     list_files,
@@ -66,6 +68,8 @@ class ToolRegistry:
             "list_files": self.filesystem.list_files,
             "read_file": self.filesystem.read_file,
             "write_file": self.filesystem.write_file,
+            "create_file": self.filesystem.create_file,
+            "delete_file": self.filesystem.delete_file,
             "edit_file": self.filesystem.edit_file,
             # Search
             "search_files": self.search.search_files,
@@ -113,6 +117,8 @@ __all__ = [
     "list_files",
     "read_file",
     "write_file",
+    "create_file",
+    "delete_file",
     "edit_file",
     "DEFAULT_EXCLUDE_PATTERNS",
     "get_filesystem_tool_definitions",

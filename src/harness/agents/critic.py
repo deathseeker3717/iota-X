@@ -51,14 +51,32 @@ class CriticAgent:
 
         messages = [Message(role="user", content=user_prompt)]
 
-        result_dict = self.model.generate_structured(
-            messages=messages,
-            schema_cls=CriticEvaluation,
-            system_prompt=CRITIC_SYSTEM_PROMPT,
-            temperature=self.temperature,
-        )
+        try:
+            result = self.model.generate_structured(
+                messages=messages,
+                schema_cls=CriticEvaluation,
+                system_prompt=CRITIC_SYSTEM_PROMPT,
+                temperature=self.temperature,
+            )
 
-        if isinstance(result_dict, CriticEvaluation):
-            return result_dict
+            if isinstance(result, CriticEvaluation):
+                return result
 
-        return CriticEvaluation.from_dict(result_dict)
+            if isinstance(result, dict):
+                return CriticEvaluation.from_dict(result)
+
+            return CriticEvaluation(
+                is_acceptable=False,
+                score=0.0,
+                feedback=f"Unexpected model output type: {type(result)}",
+                unresolved_issues=["Failed to parse structured CriticEvaluation"],
+                suggestions=["Check model output format and temperature"],
+            )
+        except Exception as e:
+            return CriticEvaluation(
+                is_acceptable=False,
+                score=0.0,
+                feedback=f"CriticAgent evaluation failed: {e}",
+                unresolved_issues=[f"Evaluation execution error: {e}"],
+                suggestions=["Verify ModelGateway connection and request payload"],
+            )

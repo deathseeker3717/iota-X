@@ -585,10 +585,13 @@ def test_critic_agent_live_ollama_integration():
     )
 
     assert isinstance(evaluation, CriticEvaluation)
+    assert not evaluation.feedback.startswith("CriticAgent evaluation failed:"), (
+        f"Live model call failed: {evaluation.feedback}"
+    )
     assert isinstance(evaluation.is_acceptable, bool)
-    assert isinstance(evaluation.score, float)
+    assert isinstance(evaluation.score, (int, float))
     assert 0.0 <= evaluation.score <= 1.0
-    assert isinstance(evaluation.feedback, str) and len(evaluation.feedback) > 0
+    assert isinstance(evaluation.feedback, str) and len(evaluation.feedback.strip()) > 0
     assert isinstance(evaluation.unresolved_issues, list)
     assert isinstance(evaluation.suggestions, list)
 

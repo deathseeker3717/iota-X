@@ -174,11 +174,32 @@ class CriticEvaluation:
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "CriticEvaluation":
+        if not isinstance(data, dict):
+            return cls(
+                is_acceptable=False,
+                score=0.0,
+                feedback="Invalid evaluation payload.",
+                unresolved_issues=["Payload was not a dictionary"],
+                suggestions=[],
+            )
+
         score_val = data.get("score", 0.0)
         try:
             score = float(score_val)
+            score = max(0.0, min(1.0, score))
         except (ValueError, TypeError):
             score = 0.0
+
+        is_acc_val = data.get("is_acceptable", False)
+        if isinstance(is_acc_val, str):
+            is_acceptable = is_acc_val.strip().lower() in ("true", "1", "yes")
+        else:
+            is_acceptable = bool(is_acc_val)
+
+        feedback_val = data.get("feedback")
+        if not feedback_val and "raw_text" in data:
+            feedback_val = data["raw_text"]
+        feedback = str(feedback_val or "")
 
         unresolved = data.get("unresolved_issues") or []
         if isinstance(unresolved, str):
@@ -189,9 +210,9 @@ class CriticEvaluation:
             suggestions = [suggestions]
 
         return cls(
-            is_acceptable=bool(data.get("is_acceptable", False)),
+            is_acceptable=is_acceptable,
             score=score,
-            feedback=str(data.get("feedback", "")),
+            feedback=feedback,
             unresolved_issues=[str(i) for i in unresolved],
             suggestions=[str(s) for s in suggestions],
         )

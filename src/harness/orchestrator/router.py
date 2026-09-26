@@ -38,7 +38,18 @@ class AdaptiveRouter:
             return HarnessStatus.CODING
 
         elif state.status == HarnessStatus.CODING:
-            # Code change applied; must run verification / testing
+            # If proposal was generated and needs application, move to APPLYING
+            if state.proposal is not None and state.application_result is None:
+                return HarnessStatus.APPLYING
+            return HarnessStatus.TESTING
+
+        elif state.status == HarnessStatus.APPLYING:
+            # Check application outcome
+            if state.application_result is not None and not state.application_result.success:
+                if state.recovery_attempts < state.max_recovery_attempts:
+                    return HarnessStatus.RECOVERING
+                return HarnessStatus.FAILED
+            # Application succeeded, move to testing
             return HarnessStatus.TESTING
 
         elif state.status == HarnessStatus.TESTING:
@@ -52,7 +63,21 @@ class AdaptiveRouter:
                     return HarnessStatus.RECOVERING
                 return HarnessStatus.FAILED
 
-            # Tests passed, move to final verification
+            # Tests passed. If critic is enabled or registered, move to CRITIC
+            if state.metadata.get("critic_enabled", False):
+                return HarnessStatus.CRITIC
+            # Otherwise move to final verification
+            return HarnessStatus.VERIFYING
+
+        elif state.status == HarnessStatus.CRITIC:
+            # Check critic evaluation
+            if state.critic_result is not None:
+                is_acceptable = getattr(state.critic_result, "is_acceptable", True)
+                if not is_acceptable:
+                    if state.recovery_attempts < state.max_recovery_attempts:
+                        return HarnessStatus.RECOVERING
+                    return HarnessStatus.FAILED
+
             return HarnessStatus.VERIFYING
 
         elif state.status == HarnessStatus.RECOVERING:
@@ -60,7 +85,14 @@ class AdaptiveRouter:
             return HarnessStatus.CODING
 
         elif state.status == HarnessStatus.VERIFYING:
-            # Final verification passed
+            # Final verification: check for unhandled errors
+            has_failed_test = any(
+                not t.get("passed", False) for t in state.test_results[-1:]
+            ) if state.test_results else False
+            if state.errors or has_failed_test:
+                if state.recovery_attempts < state.max_recovery_attempts:
+                    return HarnessStatus.RECOVERING
+                return HarnessStatus.FAILED
             return HarnessStatus.COMPLETED
 
         return state.status

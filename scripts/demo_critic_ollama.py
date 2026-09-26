@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Demonstration of real model integration flow for Phase 5:
 
-Flow:
+Pipeline:
 GitHub Issue
     ↓
 PlannerAgent
@@ -44,7 +44,7 @@ def main() -> None:
     print("GitHub Issue -> PlannerAgent -> Plan -> CoderAgent -> CodeProposal -> CriticAgent -> CriticEvaluation")
     print("=" * 80)
 
-    # 1. Incoming GitHub Issue
+    # 1. Incoming GitHub Issue (same scenario as planner/coder demos)
     issue: Dict[str, Any] = {
         "title": "Add optional tag filtering to GET /items endpoint",
         "description": (
@@ -81,39 +81,61 @@ def main() -> None:
     }
 
     print("\n[1] Incoming GitHub Issue:")
-    print(f"    Title: {issue['title']}")
+    print(f"    Title:       {issue['title']}")
     print(f"    Description: {issue['description']}")
 
     # 2. Setup ModelGateway with OllamaClient (gpt-oss:20b)
-    print("\n[2] Instantiating OllamaClient and ModelGateway...")
+    print("\n[2] Setting up ModelGateway with OllamaClient...")
     client = OllamaClient(
         model_name="gpt-oss:20b",
         base_url="http://localhost:11434/v1",
     )
     gateway = ModelGateway(provider=client)
-    print(f"    OllamaClient configured for model: {client.model_name}")
+    print(f"    OllamaClient endpoint: {client.base_url}")
+    print(f"    Model name:            {client.model_name}")
 
     # 3. PlannerAgent produces Plan
-    print("\n[3] Step 1: Running PlannerAgent...")
+    print("\n[3] Step 1: Running PlannerAgent (gpt-oss:20b)...")
     planner = PlannerAgent(model=gateway, temperature=0.1)
     plan: Plan = planner.plan(issue=issue, repo_info=repo_info)
-    print(f"    Plan Goal: {plan.goal}")
-    print(f"    Requirements: {len(plan.requirements)} items")
-    print(f"    Steps: {len(plan.steps)} items")
+
+    print("\n" + "-" * 40 + " PLAN " + "-" * 40)
+    print(f"Goal: {plan.goal}")
+    print(f"\nRequirements ({len(plan.requirements)}):")
+    for idx, req in enumerate(plan.requirements, 1):
+        print(f"  {idx}. {req}")
+    print(f"\nSteps ({len(plan.steps)}):")
+    for idx, step in enumerate(plan.steps, 1):
+        print(f"  {idx}. {step}")
+    print(f"\nFiles to Investigate ({len(plan.files_to_investigate)}):")
+    for idx, f in enumerate(plan.files_to_investigate, 1):
+        print(f"  {idx}. {f}")
+    print(f"\nPotential Risks ({len(plan.potential_risks)}):")
+    for idx, risk in enumerate(plan.potential_risks, 1):
+        print(f"  {idx}. {risk}")
 
     # 4. CoderAgent produces CodeProposal
-    print("\n[4] Step 2: Running CoderAgent...")
+    print("\n[4] Step 2: Running CoderAgent (gpt-oss:20b)...")
     coder = CoderAgent(model=gateway, temperature=0.2)
     proposal: CodeProposal = coder.code(
         issue=issue,
         plan=plan,
         repo_info=repo_info,
     )
-    print(f"    CodeProposal Explanation: {proposal.explanation}")
-    print(f"    Files to Modify: {proposal.files_to_modify}")
-    print(f"    Changes Count: {len(proposal.changes)}")
 
-    # 5. Simulated Test Results
+    print("\n" + "-" * 37 + " CODE PROPOSAL " + "-" * 38)
+    print(f"Explanation: {proposal.explanation}")
+    print(f"Files to Modify: {proposal.files_to_modify}")
+    print(f"\nChanges ({len(proposal.changes)}):")
+    for idx, ch in enumerate(proposal.changes, 1):
+        print(f"  Change #{idx}: {ch.file_path} ({ch.action}) - {ch.explanation}")
+        if ch.new_content:
+            preview = ch.new_content[:150].strip() + ("..." if len(ch.new_content) > 150 else "")
+            print(f"    Preview:\n      {preview.replace(chr(10), chr(10) + '      ')}")
+
+    # 5. Test/Execution Context Provided to CriticAgent
+    print("\n[5] Test / Execution Context Provided to CriticAgent:")
+    print("    NOTE: The following is simulated test execution context provided as evaluation evidence:")
     test_results = {
         "status": "passed",
         "output": (
@@ -124,12 +146,11 @@ def main() -> None:
             "============================== 3 passed in 0.04s ==============================="
         ),
     }
-    print(f"\n[5] Test Execution Results Provided to Critic:")
     print(f"    Status: {test_results['status']}")
-    print(f"    Summary: 3 passed in 0.04s")
+    print("    Output Summary: 3 tests passed in 0.04s")
 
-    # 6. CriticAgent evaluates CodeProposal + Plan + Issue + Test Results
-    print("\n[6] Step 3: Running CriticAgent...")
+    # 6. CriticAgent evaluates CodeProposal + Plan + Issue + Context
+    print("\n[6] Step 3: Running CriticAgent (gpt-oss:20b)...")
     critic = CriticAgent(model=gateway, temperature=0.1)
     evaluation: CriticEvaluation = critic.evaluate(
         issue=issue,
@@ -143,8 +164,8 @@ def main() -> None:
     print("\n" + "=" * 80)
     print("RESULT: Structured CriticEvaluation Received from CriticAgent")
     print("=" * 80)
-    print(f"Type: {type(evaluation).__module__}.{type(evaluation).__name__}")
-    print(f"\nIs Acceptable: {evaluation.is_acceptable}")
+    print(f"Object Type:   {type(evaluation).__module__}.{type(evaluation).__name__}")
+    print(f"Is Acceptable: {evaluation.is_acceptable}")
     print(f"Score:         {evaluation.score} / 1.0")
     print(f"\nFeedback:\n{evaluation.feedback}\n")
 
@@ -162,16 +183,19 @@ def main() -> None:
     else:
         print("  (None)")
 
-    # Assertions
+    # Assertions / Validations
     assert isinstance(evaluation, CriticEvaluation), f"Expected CriticEvaluation, got {type(evaluation)}"
+    assert not evaluation.feedback.startswith("CriticAgent evaluation failed:"), f"Critic failed: {evaluation.feedback}"
     assert isinstance(evaluation.is_acceptable, bool)
-    assert isinstance(evaluation.score, float)
+    assert isinstance(evaluation.score, (int, float))
     assert 0.0 <= evaluation.score <= 1.0
-    assert len(evaluation.feedback) > 0
+    assert len(evaluation.feedback.strip()) > 0
     assert isinstance(evaluation.unresolved_issues, list)
     assert isinstance(evaluation.suggestions, list)
 
-    print("\n[Status]: Full Planner -> Coder -> Critic pipeline verified successfully!")
+    print("\n" + "=" * 80)
+    print("[STATUS]: Full Planner -> Coder -> Critic pipeline verified successfully with gpt-oss:20b!")
+    print("=" * 80)
 
 
 if __name__ == "__main__":
