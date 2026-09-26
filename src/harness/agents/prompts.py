@@ -56,17 +56,18 @@ Return ONLY valid JSON.
 CRITIC_SYSTEM_PROMPT = """You are a Principal Code Reviewer and Quality Assurance Architect.
 Your responsibility is to critically evaluate a proposed code change against the original issue and plan.
 
-IMPORTANT: This evaluation is separate from automated test execution. You must evaluate:
-- Does this change actually solve the issue?
-- Are all requirements fulfilled?
-- Are edge cases handled?
-- Are there any architectural flaws, regression risks, or formatting issues?
+You must evaluate:
+1. Goal & Requirements: Does this CodeProposal satisfy the Plan and solve the original issue?
+2. Scope & Appropriateness: Are the proposed files and changes appropriate?
+3. Correctness & Quality: Are there syntax issues, bugs, or regression risks?
+4. Edge Cases: Are edge cases and error handling properly considered?
+5. Testing & Execution: If test/execution results are provided, do failures indicate an implementation problem? Are tests missing?
 
 Respond with a strictly formatted JSON object matching the following structure:
 {
   "is_acceptable": true|false,
   "score": <float between 0.0 and 1.0>,
-  "feedback": "<Overall evaluation feedback>",
+  "feedback": "<Detailed evaluation feedback summarizing strengths and weaknesses>",
   "unresolved_issues": ["<Issue 1>", ...],
   "suggestions": ["<Suggestion 1>", ...]
 }
@@ -137,6 +138,8 @@ def format_critic_user_prompt(
     issue: Dict[str, Any],
     proposal: Dict[str, Any],
     plan: Optional[Dict[str, Any]] = None,
+    repo_info: Optional[Dict[str, Any]] = None,
+    test_results: Optional[Union[str, Dict[str, Any]]] = None,
 ) -> str:
     """Format prompt for Critic Agent."""
     title = issue.get("title", "No title")
@@ -145,7 +148,21 @@ def format_critic_user_prompt(
     prompt = f"### ORIGINAL ISSUE\nTitle: {title}\nDescription:\n{body}\n\n"
     
     if plan:
-        prompt += f"### TARGET PLAN\nGoal: {plan.get('goal', '')}\nRequirements: {plan.get('requirements', [])}\n\n"
+        prompt += f"### TARGET PLAN\nGoal: {plan.get('goal', '')}\n"
+        if plan.get("requirements"):
+            prompt += f"Requirements: {plan.get('requirements')}\n"
+        if plan.get("steps"):
+            prompt += "Steps:\n" + "\n".join(f"- {s}" for s in plan.get("steps", [])) + "\n"
+        prompt += "\n"
+
+    if repo_info:
+        prompt += "### REPOSITORY CONTEXT\n"
+        if "tree" in repo_info:
+            prompt += f"Directory Structure:\n{repo_info['tree']}\n\n"
+        if "files" in repo_info:
+            prompt += f"Relevant Files:\n{repo_info['files']}\n\n"
+        if "context" in repo_info:
+            prompt += f"Context:\n{repo_info['context']}\n\n"
         
     prompt += f"### PROPOSED CODE CHANGE\n"
     prompt += f"Thought Process: {proposal.get('thought_process', '')}\n"
@@ -163,6 +180,18 @@ def format_critic_user_prompt(
                 prompt += f"  New Content:\n```\n{change.get('new_content')}\n```\n"
             elif change.get("diff"):
                 prompt += f"  Diff:\n```diff\n{change.get('diff')}\n```\n"
+
+    if test_results:
+        prompt += "\n### TEST / EXECUTION RESULTS\n"
+        if isinstance(test_results, dict):
+            if "status" in test_results:
+                prompt += f"Status: {test_results['status']}\n"
+            if "output" in test_results:
+                prompt += f"Output:\n{test_results['output']}\n"
+            if "failures" in test_results:
+                prompt += f"Failures:\n{test_results['failures']}\n"
+        else:
+            prompt += f"{test_results}\n"
 
     prompt += "\nEvaluate this proposal and output the CriticEvaluation JSON."
     return prompt

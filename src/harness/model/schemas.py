@@ -174,10 +174,24 @@ class CriticEvaluation:
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "CriticEvaluation":
+        score_val = data.get("score", 0.0)
+        try:
+            score = float(score_val)
+        except (ValueError, TypeError):
+            score = 0.0
+
+        unresolved = data.get("unresolved_issues") or []
+        if isinstance(unresolved, str):
+            unresolved = [unresolved]
+
+        suggestions = data.get("suggestions") or []
+        if isinstance(suggestions, str):
+            suggestions = [suggestions]
+
         return cls(
             is_acceptable=bool(data.get("is_acceptable", False)),
-            score=float(data.get("score", 0.0)),
-            feedback=data.get("feedback", ""),
-            unresolved_issues=data.get("unresolved_issues", []),
-            suggestions=data.get("suggestions", []),
+            score=score,
+            feedback=str(data.get("feedback", "")),
+            unresolved_issues=[str(i) for i in unresolved],
+            suggestions=[str(s) for s in suggestions],
         )

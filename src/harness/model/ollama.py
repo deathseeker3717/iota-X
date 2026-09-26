@@ -22,12 +22,18 @@ class OllamaClient(ModelInterface):
         self,
         model_name: str = "gpt-oss:20b",
         base_url: Optional[str] = None,
-        timeout: float = 120.0,
+        timeout: float = 300.0,
     ) -> None:
         self.model_name = model_name
         env_base_url = os.getenv("OLLAMA_BASE_URL")
         raw_base_url = base_url or env_base_url or "http://localhost:11434/v1"
         self.base_url = raw_base_url.rstrip("/")
+        env_timeout = os.getenv("OLLAMA_TIMEOUT")
+        if env_timeout:
+            try:
+                timeout = float(env_timeout)
+            except ValueError:
+                pass
         self.timeout = timeout
 
     def generate(self, request: ModelRequest) -> ModelResponse:

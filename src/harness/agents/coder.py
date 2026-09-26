@@ -45,34 +45,35 @@ class CoderAgent:
         history: List[Dict[str, Any]] = []
 
         # Tool execution loop if tool_executor and tools are available
-        iterations = 0
-        while iterations < self.max_tool_iterations:
-            user_prompt = format_coder_user_prompt(
-                issue=issue_dict,
-                plan=plan_dict,
-                repo_info=repo_info,
-                history=history if history else None,
-            )
+        if tools and tool_executor:
+            iterations = 0
+            while iterations < self.max_tool_iterations:
+                user_prompt = format_coder_user_prompt(
+                    issue=issue_dict,
+                    plan=plan_dict,
+                    repo_info=repo_info,
+                    history=history if history else None,
+                )
 
-            messages = [Message(role="user", content=user_prompt)]
+                messages = [Message(role="user", content=user_prompt)]
 
-            response = self.model.generate(
-                messages=messages,
-                system_prompt=CODER_SYSTEM_PROMPT,
-                tools=tools,
-                temperature=self.temperature,
-            )
+                response = self.model.generate(
+                    messages=messages,
+                    system_prompt=CODER_SYSTEM_PROMPT,
+                    tools=tools,
+                    temperature=self.temperature,
+                )
 
-            # If tool calls returned by model and tool executor is available
-            if response.tool_calls and tool_executor:
-                for tc in response.tool_calls:
-                    output = tool_executor(tc)
-                    history.append({"tool": tc.name, "arguments": tc.arguments, "output": output})
-                iterations += 1
-                continue
-            else:
-                # No tool calls or no executor, proceed to get final structured proposal
-                break
+                # If tool calls returned by model and tool executor is available
+                if response.tool_calls:
+                    for tc in response.tool_calls:
+                        output = tool_executor(tc)
+                        history.append({"tool": tc.name, "arguments": tc.arguments, "output": output})
+                    iterations += 1
+                    continue
+                else:
+                    # No more tool calls returned, proceed to final structured proposal
+                    break
 
         # Final structured generation
         user_prompt = format_coder_user_prompt(

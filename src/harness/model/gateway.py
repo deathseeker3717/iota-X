@@ -48,9 +48,11 @@ class ModelGateway:
         elif provider_name in ("ollama", "local"):
             model_name = model_cfg.get("model_name", "gpt-oss:20b")
             base_url = model_cfg.get("base_url", os.getenv("OLLAMA_BASE_URL", "http://localhost:11434/v1"))
+            timeout = float(model_cfg.get("timeout", os.getenv("OLLAMA_TIMEOUT", "300.0")))
             client = OllamaProvider(
                 model_name=model_name,
                 base_url=base_url,
+                timeout=timeout,
             )
             return cls(provider=client)
         else:
@@ -133,15 +135,19 @@ class ModelGateway:
     def extract_json(content: str) -> Dict[str, Any]:
         """Extract and parse JSON object from text content."""
         content_stripped = content.strip()
-        
+
+        # Strip reasoning/thought tags if present (e.g., <think>...</think>)
+        cleaned = re.sub(r"<think>[\s\S]*?</think>", "", content_stripped, flags=re.DOTALL).strip()
+        target = cleaned if cleaned else content_stripped
+
         # Try direct JSON parsing
         try:
-            return json.loads(content_stripped)
+            return json.loads(target)
         except json.JSONDecodeError:
             pass
 
         # Try extracting ```json ... ``` block
-        json_block_match = re.search(r"```(?:json)?\s*(\{[\s\S]*?\})\s*```", content_stripped, re.IGNORECASE)
+        json_block_match = re.search(r"```(?:json)?\s*(\{[\s\S]*?\})\s*```", target, re.IGNORECASE)
         if json_block_match:
             try:
                 return json.loads(json_block_match.group(1))
@@ -149,11 +155,11 @@ class ModelGateway:
                 pass
 
         # Try searching for first '{' and last '}'
-        start = content_stripped.find("{")
-        end = content_stripped.rfind("}")
+        start = target.find("{")
+        end = target.rfind("}")
         if start != -1 and end != -1 and start < end:
             try:
-                return json.loads(content_stripped[start : end + 1])
+                return json.loads(target[start : end + 1])
             except json.JSONDecodeError:
                 pass
 

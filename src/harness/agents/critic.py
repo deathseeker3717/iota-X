@@ -29,6 +29,8 @@ class CriticAgent:
         issue: Union[str, Dict[str, Any]],
         proposal: Union[CodeProposal, Dict[str, Any]],
         plan: Optional[Union[Plan, Dict[str, Any]]] = None,
+        repo_info: Optional[Dict[str, Any]] = None,
+        test_results: Optional[Union[str, Dict[str, Any]]] = None,
     ) -> CriticEvaluation:
         """Evaluate a proposed code implementation."""
         if isinstance(issue, str):
@@ -43,6 +45,8 @@ class CriticAgent:
             issue=issue_dict,
             proposal=proposal_dict,
             plan=plan_dict,
+            repo_info=repo_info,
+            test_results=test_results,
         )
 
         messages = [Message(role="user", content=user_prompt)]
