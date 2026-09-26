@@ -11,12 +11,14 @@ import { useCallback, useEffect, useState } from 'react';
 import {
   AgentStep,
   GitChange,
+  GitCommit,
+  GitStatus,
   TerminalOutput,
   VerificationResult,
 } from '../types';
 import { AgentEvent } from '../types/chatContract';
 import { useChat } from './useChat';
-import { api } from '../services/api';
+import { api, gitApi } from '../services/api';
 import { terminalApi } from '../services/terminalApi';
 
 export function useHarness() {
@@ -63,9 +65,14 @@ tests/test_tool_registry.py ..
   });
   const [isRunningVerification, setIsRunningVerification] = useState<boolean>(false);
 
-  // Git State
+  // Git State (backed by Backend Git Tool)
+  const [gitStatus, setGitStatus] = useState<GitStatus | null>(null);
   const [gitChanges, setGitChanges] = useState<GitChange[]>([]);
   const [selectedGitFile, setSelectedGitFile] = useState<string | null>(null);
+  const [gitCommits, setGitCommits] = useState<GitCommit[]>([]);
+  const [selectedCommit, setSelectedCommit] = useState<GitCommit | null>(null);
+  const [selectedCommitDiff, setSelectedCommitDiff] = useState<string>('');
+  const [isGitLoading, setIsGitLoading] = useState<boolean>(false);
 
   // Handler for Agent Events emitted during chat execution
   // Dispatches to Agent Activity panel separately from conversation
@@ -116,16 +123,49 @@ tests/test_tool_registry.py ..
     onAgentEvents: handleAgentEvents,
   });
 
+  // Git Operations through backend Git Tool
+  const refreshGit = useCallback(async () => {
+    try {
+      setIsGitLoading(true);
+      const [status, logs] = await Promise.all([
+        gitApi.getStatus(),
+        gitApi.getLog({ maxCount: 15 }),
+      ]);
+      setGitStatus(status);
+      setGitChanges(status.changes);
+      setGitCommits(logs);
+      setSelectedGitFile((current) => {
+        if (current && status.changes.some((c) => c.file === current)) {
+          return current;
+        }
+        return status.changes.length > 0 ? status.changes[0].file : null;
+      });
+    } catch (err) {
+      console.error('Failed to refresh Git status', err);
+    } finally {
+      setIsGitLoading(false);
+    }
+  }, []);
+
+  const selectGitCommit = useCallback(async (hash: string) => {
+    try {
+      setIsGitLoading(true);
+      const diff = await gitApi.getShow(hash);
+      const commit = gitCommits.find((c) => c.hash === hash || c.shortHash === hash) || null;
+      setSelectedCommit(commit);
+      setSelectedCommitDiff(diff);
+    } catch (err) {
+      console.error('Failed to inspect commit', err);
+    } finally {
+      setIsGitLoading(false);
+    }
+  }, [gitCommits]);
+
   // Initial load from Harness API
   useEffect(() => {
     async function loadInitial() {
       try {
-        const changes = await api.getGitChanges();
-        setGitChanges(changes);
-        if (changes.length > 0) {
-          setSelectedGitFile(changes[0].file);
-        }
-
+        await refreshGit();
         const steps = await api.getAgentWorkflow();
         setAgentSteps(steps);
       } catch (err) {
@@ -133,7 +173,7 @@ tests/test_tool_registry.py ..
       }
     }
     loadInitial();
-  }, []);
+  }, [refreshGit]);
 
   // Run controlled shell command via terminalApi
   const runTerminalCommand = useCallback(async (cmd: string) => {
@@ -259,9 +299,16 @@ tests/test_tool_registry.py ..
     isRunningVerification,
     runVerification,
 
-    // Git
+    // Git (Backend Git Tool)
+    gitStatus,
     gitChanges,
     selectedGitFile,
     setSelectedGitFile,
+    gitCommits,
+    selectedCommit,
+    selectedCommitDiff,
+    isGitLoading,
+    refreshGit,
+    selectGitCommit,
   };
 }

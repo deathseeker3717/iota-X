@@ -13,6 +13,8 @@ import {
   ActiveBottomTab,
   AgentStep,
   GitChange,
+  GitCommit,
+  GitStatus,
   TerminalOutput,
   VerificationResult,
 } from '../../types';
@@ -33,9 +35,16 @@ interface BottomPanelProps {
   isRunningVerification: boolean;
   onRunVerification: () => void;
   onAskAgentToFix?: (msg: string) => void;
+  gitStatus?: GitStatus | null;
   gitChanges: GitChange[];
   selectedGitFile: string | null;
   onSelectGitFile: (file: string) => void;
+  gitCommits?: GitCommit[];
+  selectedCommit?: GitCommit | null;
+  selectedCommitDiff?: string;
+  onSelectCommit?: (hash: string) => void;
+  isGitLoading?: boolean;
+  onRefreshGit?: () => void;
   agentSteps: AgentStep[];
   isAgentRunning: boolean;
   onOpenFile?: (path: string) => void;
@@ -58,6 +67,13 @@ export const BottomPanel: React.FC<BottomPanelProps> = ({
   gitChanges,
   selectedGitFile,
   onSelectGitFile,
+  gitStatus,
+  gitCommits,
+  selectedCommit,
+  selectedCommitDiff,
+  onSelectCommit,
+  isGitLoading,
+  onRefreshGit,
   isTerminalExecuting,
   onCancelTerminalCommand,
   agentSteps,
@@ -201,9 +217,16 @@ export const BottomPanel: React.FC<BottomPanelProps> = ({
 
           {activeTab === 'git' && (
             <GitDiffView
+              status={gitStatus || null}
               changes={gitChanges}
               selectedFile={selectedGitFile}
               onSelectFile={onSelectGitFile}
+              commits={gitCommits}
+              selectedCommit={selectedCommit}
+              selectedCommitDiff={selectedCommitDiff}
+              onSelectCommit={onSelectCommit}
+              isLoading={isGitLoading}
+              onRefresh={onRefreshGit}
               onOpenFile={onOpenFile}
             />
           )}

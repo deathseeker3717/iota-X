@@ -441,9 +441,9 @@ tests/test_tool_registry.py ..                                           [100%]
     const changes = await this.getGitChanges();
     if (file) {
       const match = changes.find((c) => c.file === file);
-      return match ? match.diff : '';
+      return match?.diff || '';
     }
-    return changes.map((c) => `--- a/${c.file}\n+++ b/${c.file}\n${c.diff}`).join('\n\n');
+    return changes.map((c) => `--- a/${c.file}\n+++ b/${c.file}\n${c.diff || ''}`).join('\n\n');
   }
 
   async runTests(filter?: string): Promise<VerificationResult> {
