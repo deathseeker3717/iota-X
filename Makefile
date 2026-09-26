@@ -7,7 +7,8 @@ VENV_PYTEST = $(VENV)/bin/pytest
 
 setup:
 	@if [ ! -d "$(VENV)" ]; then \
-		python3 -m venv $(VENV); \
+		PYTHON_BIN=$$(which /opt/homebrew/bin/python3 || which python3.12 || which python3.11 || which python3.10 || which python3); \
+		$$PYTHON_BIN -m venv $(VENV); \
 	fi
 	$(VENV_PIP) install --upgrade pip
 	$(VENV_PIP) install -e ".[dev]"
