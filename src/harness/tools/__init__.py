@@ -10,7 +10,10 @@ from harness.tools.filesystem import (
     write_file,
 )
 from harness.tools.git import (
+    GitChange,
     GitCommit,
+    GitDiff,
+    GitStatus,
     GitStatusResult,
     GitTool,
     get_git_tool_definitions,
@@ -134,7 +137,10 @@ __all__ = [
     "get_shell_tool_definitions",
     # Git
     "GitTool",
+    "GitStatus",
     "GitStatusResult",
+    "GitChange",
+    "GitDiff",
     "GitCommit",
     "git_status",
     "git_diff",

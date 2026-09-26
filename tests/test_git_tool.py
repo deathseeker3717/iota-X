@@ -1,16 +1,86 @@
-"""Unit tests for the GitTool."""
+"""Unit tests for the GitTool and shared Git models."""
 
 import subprocess
 import pytest
 from pathlib import Path
 from harness.tools.git import (
+    GitChange,
+    GitCommit,
+    GitDiff,
+    GitStatus,
+    GitStatusResult,
     GitTool,
     get_git_tool_definitions,
-    git_status,
     git_diff,
     git_log,
     git_show,
+    git_status,
 )
+
+
+def test_git_models_serialization():
+    # GitChange
+    change = GitChange(
+        file="src/harness/main.py",
+        status="modified",
+        staged=False,
+        additions=12,
+        deletions=3,
+        diff="@@ -1,3 +1,12 @@",
+    )
+    change_dict = change.to_dict()
+    assert change_dict["file"] == "src/harness/main.py"
+    assert change_dict["status"] == "modified"
+    assert change_dict["additions"] == 12
+    restored_change = GitChange.from_dict(change_dict)
+    assert restored_change.file == change.file
+
+    # GitStatus
+    status = GitStatus(
+        branch="context-observability",
+        is_clean=False,
+        changes=[change],
+        staged_files=[],
+        unstaged_files=["src/harness/main.py"],
+        untracked_files=[],
+        ahead=1,
+        behind=0,
+    )
+    status_dict = status.to_dict()
+    assert status_dict["branch"] == "context-observability"
+    assert len(status_dict["changes"]) == 1
+    assert len(status.modified_files) == 1
+    assert len(status.added_files) == 0
+
+    restored_status = GitStatus.from_dict(status_dict)
+    assert restored_status.branch == "context-observability"
+    assert len(restored_status.changes) == 1
+
+    # GitDiff
+    diff = GitDiff(
+        file_path="src/harness/main.py",
+        staged=False,
+        diff_text="--- a/main.py\n+++ b/main.py\n+import sys",
+        additions=1,
+        deletions=0,
+    )
+    diff_dict = diff.to_dict()
+    assert diff_dict["additions"] == 1
+    restored_diff = GitDiff.from_dict(diff_dict)
+    assert restored_diff.diff_text == diff.diff_text
+
+    # GitCommit
+    commit = GitCommit(
+        hash="c097d45123456789",
+        short_hash="c097d45",
+        author="Aryan Goyal <aryan@example.com>",
+        date="2026-09-27",
+        message="feat: context manager",
+    )
+    commit_dict = commit.to_dict()
+    assert commit_dict["short_hash"] == "c097d45"
+    restored_commit = GitCommit.from_dict(commit_dict)
+    assert restored_commit.message == "feat: context manager"
 
 
 def test_git_tool_in_real_repo():
@@ -23,6 +93,7 @@ def test_git_tool_in_real_repo():
     assert isinstance(status.is_clean, bool)
     assert isinstance(status.staged_files, list)
     assert isinstance(status.unstaged_files, list)
+    assert isinstance(status.changes, list)
 
     log = gt.git_log(max_count=2)
     assert isinstance(log, list)
@@ -48,6 +119,8 @@ def test_git_tool_in_temp_git_repo(tmp_path):
     status1 = gt.git_status()
     assert "hello.txt" in status1.untracked_files
     assert status1.is_clean is False
+    assert len(status1.changes) == 1
+    assert status1.changes[0].status == "untracked"
 
     # Stage and commit
     subprocess.run(["git", "add", "hello.txt"], cwd=tmp_path, check=True)
@@ -59,12 +132,14 @@ def test_git_tool_in_temp_git_repo(tmp_path):
     # Modify file -> test diff
     test_file.write_text("initial content\nmodified line\n")
     diff = gt.git_diff()
-    assert "+modified line" in diff
+    assert isinstance(diff, GitDiff)
+    assert "+modified line" in diff.diff_text
+    assert diff.additions >= 1
 
     # Stage modification -> test staged diff
     subprocess.run(["git", "add", "hello.txt"], cwd=tmp_path, check=True)
     staged_diff = gt.git_diff(staged=True)
-    assert "+modified line" in staged_diff
+    assert "+modified line" in staged_diff.diff_text
 
     # Log
     log = gt.git_log(max_count=5)

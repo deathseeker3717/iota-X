@@ -16,6 +16,7 @@ import {
 } from '../types';
 import { AgentEvent } from '../types/chatContract';
 import { useChat } from './useChat';
+import { useGit } from './useGit';
 import { api } from '../services/api';
 import { terminalApi } from '../services/terminalApi';
 
@@ -63,9 +64,22 @@ tests/test_tool_registry.py ..
   });
   const [isRunningVerification, setIsRunningVerification] = useState<boolean>(false);
 
-  // Git State
-  const [gitChanges, setGitChanges] = useState<GitChange[]>([]);
-  const [selectedGitFile, setSelectedGitFile] = useState<string | null>(null);
+  // Git State (Connected to centralized Git API)
+  const {
+    status: gitStatus,
+    changes: gitChanges,
+    commits: gitCommits,
+    activeDiff: activeGitDiff,
+    selectedFile: selectedGitFile,
+    selectedCommit: selectedGitCommit,
+    commitDetails: gitCommitDetails,
+    isLoading: isGitLoading,
+    isRefreshing: isGitRefreshing,
+    refreshGit,
+    selectFile: selectGitFile,
+    selectCommit: selectGitCommit,
+    clearSelectedCommit: clearGitCommit,
+  } = useGit({ autoFetch: true });
 
   // Handler for Agent Events emitted during chat execution
   // Dispatches to Agent Activity panel separately from conversation
@@ -120,12 +134,6 @@ tests/test_tool_registry.py ..
   useEffect(() => {
     async function loadInitial() {
       try {
-        const changes = await api.getGitChanges();
-        setGitChanges(changes);
-        if (changes.length > 0) {
-          setSelectedGitFile(changes[0].file);
-        }
-
         const steps = await api.getAgentWorkflow();
         setAgentSteps(steps);
       } catch (err) {
@@ -259,9 +267,20 @@ tests/test_tool_registry.py ..
     isRunningVerification,
     runVerification,
 
-    // Git
+    // Git Integration
+    gitStatus,
     gitChanges,
+    gitCommits,
+    activeGitDiff,
     selectedGitFile,
-    setSelectedGitFile,
+    selectedGitCommit,
+    gitCommitDetails,
+    isGitLoading,
+    isGitRefreshing,
+    refreshGit,
+    selectGitFile,
+    selectGitCommit,
+    clearGitCommit,
+    setSelectedGitFile: selectGitFile,
   };
 }

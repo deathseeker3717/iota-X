@@ -52,9 +52,19 @@ export const Workspace: React.FC = () => {
     verificationResult,
     isRunningVerification,
     runVerification,
+    gitStatus,
     gitChanges,
+    gitCommits,
+    activeGitDiff,
     selectedGitFile,
-    setSelectedGitFile,
+    selectedGitCommit,
+    gitCommitDetails,
+    isGitLoading,
+    isGitRefreshing,
+    refreshGit,
+    selectGitFile,
+    selectGitCommit,
+    clearGitCommit,
   } = useHarness();
 
   // Panel sizing & state
@@ -208,9 +218,19 @@ export const Workspace: React.FC = () => {
               isRunningVerification={isRunningVerification}
               onRunVerification={runVerification}
               onAskAgentToFix={(msg) => sendMessage(msg)}
+              gitStatus={gitStatus}
               gitChanges={gitChanges}
+              gitCommits={gitCommits}
+              activeGitDiff={activeGitDiff}
               selectedGitFile={selectedGitFile}
-              onSelectGitFile={setSelectedGitFile}
+              selectedGitCommit={selectedGitCommit}
+              gitCommitDetails={gitCommitDetails}
+              isGitLoading={isGitLoading}
+              isGitRefreshing={isGitRefreshing}
+              onRefreshGit={refreshGit}
+              onSelectGitFile={selectGitFile}
+              onSelectGitCommit={selectGitCommit}
+              onClearGitCommit={clearGitCommit}
               agentSteps={agentSteps}
               isAgentRunning={isAgentRunning}
               onOpenFile={handleOpenFileByPath}

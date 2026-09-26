@@ -404,6 +404,7 @@ tests/test_tool_registry.py ..                                           [100%]
       {
         file: 'src/auth/session.py',
         status: 'modified',
+        staged: false,
         additions: 12,
         deletions: 3,
         diff: `@@ -10,3 +10,12 @@
@@ -426,6 +427,7 @@ tests/test_tool_registry.py ..                                           [100%]
       {
         file: 'tests/test_auth.py',
         status: 'modified',
+        staged: false,
         additions: 8,
         deletions: 1,
         diff: `@@ -12,2 +12,9 @@
@@ -441,9 +443,9 @@ tests/test_tool_registry.py ..                                           [100%]
     const changes = await this.getGitChanges();
     if (file) {
       const match = changes.find((c) => c.file === file);
-      return match ? match.diff : '';
+      return match?.diff ?? '';
     }
-    return changes.map((c) => `--- a/${c.file}\n+++ b/${c.file}\n${c.diff}`).join('\n\n');
+    return changes.map((c) => `--- a/${c.file}\n+++ b/${c.file}\n${c.diff ?? ''}`).join('\n\n');
   }
 
   async runTests(filter?: string): Promise<VerificationResult> {

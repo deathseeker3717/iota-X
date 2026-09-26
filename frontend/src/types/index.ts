@@ -7,6 +7,7 @@ export * from './contract';
 export * from './chatContract';
 export * from './attachmentContract';
 export * from './terminalContract';
+export * from './gitContract';
 
 import {
   RepositoryNode,
@@ -48,13 +49,6 @@ export interface VerificationResult {
   durationSeconds: number;
 }
 
-export interface GitChange {
-  file: string;
-  status: 'modified' | 'added' | 'deleted' | 'untracked';
-  additions: number;
-  deletions: number;
-  diff: string;
-}
 
 export interface AgentStep {
   id: string;
