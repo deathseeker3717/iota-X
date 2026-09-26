@@ -10,11 +10,11 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import {
-  AgentEvent,
   ChatMessage,
   ChatRequestContext,
   Conversation,
 } from '../types/chatContract';
+import { AgentEvent } from '../types/agentContract';
 import { Attachment } from '../types/attachmentContract';
 import { chatApi } from '../services/chatApi';
 import { uploadApi } from '../services/uploadApi';

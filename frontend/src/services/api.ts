@@ -52,3 +52,4 @@ export { chatApi } from './chatApi';
 export { uploadApi } from './uploadApi';
 export { terminalApi } from './terminalApi';
 export { gitApi } from './gitApi';
+export { agentStreamService } from './agentStream';

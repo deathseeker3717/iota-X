@@ -91,17 +91,7 @@ export interface ChatResponse {
   finished: boolean;
 }
 
-// ============================================================================
-// 4. Agent Event (Emitted by Orchestrator / Agents during execution)
-// ============================================================================
-
-export type AgentEventType =
-  | 'step_started'
-  | 'step_progress'
-  | 'tool_call'
-  | 'tool_result'
-  | 'step_completed'
-  | 'error';
+import { AgentEvent } from './agentContract';
 
 export type AgentRole =
   | 'orchestrator'
@@ -109,13 +99,3 @@ export type AgentRole =
   | 'coder'
   | 'critic'
   | 'verifier';
-
-export interface AgentEvent {
-  id: string;
-  type: AgentEventType;
-  agentRole: AgentRole;
-  title: string;
-  details?: string;
-  timestamp: string;
-  payload?: Record<string, any>;
-}

@@ -15,8 +15,8 @@ import {
   GitStatus,
   TerminalOutput,
   VerificationResult,
+  AgentEvent,
 } from '../types';
-import { AgentEvent } from '../types/chatContract';
 import { useChat } from './useChat';
 import { api, gitApi } from '../services/api';
 import { terminalApi } from '../services/terminalApi';

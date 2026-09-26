@@ -8,6 +8,7 @@ export * from './chatContract';
 export * from './attachmentContract';
 export * from './terminalContract';
 export * from './gitContract';
+export * from './agentContract';
 
 import {
   RepositoryNode,
@@ -47,14 +48,6 @@ export interface VerificationResult {
   requirementsSatisfied: boolean;
   failures: TestFailure[];
   durationSeconds: number;
-}
-
-export interface AgentStep {
-  id: string;
-  title: string;
-  status: 'completed' | 'in_progress' | 'pending' | 'failed' | 'recovering';
-  details?: string;
-  subSteps?: string[];
 }
 
 export type ActiveBottomTab = 'terminal' | 'tests' | 'git' | 'agent';

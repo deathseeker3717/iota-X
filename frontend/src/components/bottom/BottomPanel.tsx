@@ -232,7 +232,7 @@ export const BottomPanel: React.FC<BottomPanelProps> = ({
           )}
 
           {activeTab === 'agent' && (
-            <AgentActivityView steps={agentSteps} isRunning={isAgentRunning} />
+            <AgentActivityView onOpenFile={onOpenFile} />
           )}
         </div>
       )}

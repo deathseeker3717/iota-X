@@ -14,12 +14,12 @@
  */
 
 import {
-  AgentEvent,
   ChatMessage,
   ChatRequest,
   ChatResponse,
   Conversation,
 } from '../types/chatContract';
+import { AgentEvent } from '../types/agentContract';
 
 export interface ChatApiService {
   /** Fetch all conversation sessions */
