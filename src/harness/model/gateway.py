@@ -1,11 +1,17 @@
 """Model Gateway: High-level client for model inference."""
 
+import json
 import os
-from typing import Any, Dict, List, Optional, Union
+import re
+from typing import Any, Dict, List, Optional, Type, TypeVar, Union
 
+from harness.model.client import NvidiaNimClient
+from harness.model.interface import ModelInterface
 from harness.model.nvidia_nim import NvidiaNimProvider
 from harness.model.provider import ModelProvider
 from harness.model.schemas import Message, ModelRequest, ModelResponse, ToolDefinition
+
+T = TypeVar("T")
 
 
 class ModelGateway:
@@ -13,9 +19,10 @@ class ModelGateway:
     
     Agents communicate exclusively with ModelGateway without knowing
     the underlying provider implementation (e.g. NVIDIA NIM vs evaluation model).
+    They simply call model.generate(...) or model.generate_structured(...).
     """
 
-    def __init__(self, provider: ModelProvider) -> None:
+    def __init__(self, provider: ModelInterface) -> None:
         self.provider = provider
 
     @classmethod
@@ -28,15 +35,15 @@ class ModelGateway:
         model_cfg = config.get("model", {})
         provider_name = model_cfg.get("provider", "nvidia_nim")
         model_name = model_cfg.get("model_name", "meta/llama-3.1-70b-instruct")
+        base_url = model_cfg.get("base_url", "https://integrate.api.nvidia.com/v1")
 
-        if provider_name == "nvidia_nim":
-            base_url = model_cfg.get("base_url", "https://integrate.api.nvidia.com/v1")
-            provider = NvidiaNimProvider(
+        if provider_name in ("nvidia_nim", "nim", "default"):
+            client = NvidiaNimProvider(
                 model_name=model_name,
                 api_key=api_key or os.getenv("AI_API_KEY"),
                 base_url=base_url,
             )
-            return cls(provider=provider)
+            return cls(provider=client)
         else:
             raise ValueError(f"Unsupported model provider: '{provider_name}'")
 
@@ -47,6 +54,7 @@ class ModelGateway:
         tools: Optional[List[ToolDefinition]] = None,
         temperature: float = 0.2,
         max_tokens: Optional[int] = None,
+        response_format: Optional[Dict[str, Any]] = None,
         **extra_params: Any,
     ) -> ModelResponse:
         """High-level generate API consumed by agents."""
@@ -55,7 +63,14 @@ class ModelGateway:
             if isinstance(msg, Message):
                 normalized_messages.append(msg)
             elif isinstance(msg, dict):
-                normalized_messages.append(Message(role=msg["role"], content=msg["content"]))
+                normalized_messages.append(
+                    Message(
+                        role=msg["role"],
+                        content=msg["content"],
+                        name=msg.get("name"),
+                        tool_call_id=msg.get("tool_call_id"),
+                    )
+                )
             else:
                 raise TypeError(f"Invalid message type: {type(msg)}")
 
@@ -65,6 +80,72 @@ class ModelGateway:
             tools=tools,
             temperature=temperature,
             max_tokens=max_tokens,
+            response_format=response_format,
             extra_params=extra_params,
         )
         return self.provider.generate(request)
+
+    def generate_structured(
+        self,
+        messages: Union[List[Message], List[Dict[str, str]]],
+        schema_cls: Optional[Type[T]] = None,
+        system_prompt: Optional[str] = None,
+        temperature: float = 0.1,
+        max_tokens: Optional[int] = None,
+        **extra_params: Any,
+    ) -> Dict[str, Any]:
+        """Generate structured output parsed as a dictionary or target class.
+        
+        Extracts JSON from response content (handling markdown code blocks if present).
+        If schema_cls has a `from_dict` method, returns an instance of schema_cls.
+        Otherwise returns the parsed dictionary.
+        """
+        response = self.generate(
+            messages=messages,
+            system_prompt=system_prompt,
+            temperature=temperature,
+            max_tokens=max_tokens,
+            **extra_params,
+        )
+
+        content = response.content or ""
+        parsed_dict = self.extract_json(content)
+
+        if schema_cls and hasattr(schema_cls, "from_dict"):
+            try:
+                return getattr(schema_cls, "from_dict")(parsed_dict)
+            except Exception as e:
+                # Fallback instantiation or dict return
+                return parsed_dict
+
+        return parsed_dict
+
+    @staticmethod
+    def extract_json(content: str) -> Dict[str, Any]:
+        """Extract and parse JSON object from text content."""
+        content_stripped = content.strip()
+        
+        # Try direct JSON parsing
+        try:
+            return json.loads(content_stripped)
+        except json.JSONDecodeError:
+            pass
+
+        # Try extracting ```json ... ``` block
+        json_block_match = re.search(r"```(?:json)?\s*(\{[\s\S]*?\})\s*```", content_stripped, re.IGNORECASE)
+        if json_block_match:
+            try:
+                return json.loads(json_block_match.group(1))
+            except json.JSONDecodeError:
+                pass
+
+        # Try searching for first '{' and last '}'
+        start = content_stripped.find("{")
+        end = content_stripped.rfind("}")
+        if start != -1 and end != -1 and start < end:
+            try:
+                return json.loads(content_stripped[start : end + 1])
+            except json.JSONDecodeError:
+                pass
+
+        return {"raw_text": content}
