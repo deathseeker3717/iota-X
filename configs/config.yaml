@@ -1,0 +1,17 @@
+# AI Coding Harness Configuration
+
+app:
+  name: "ai-coding-harness"
+  version: "0.1.0"
+
+orchestrator:
+  max_iterations: 10
+  timeout_seconds: 300
+
+model:
+  # Development provider: NVIDIA NIM (OpenAI-compatible)
+  provider: "nvidia_nim"
+  # Default development model: can be customized via config or overridden
+  model_name: "meta/llama-3.1-70b-instruct"
+  base_url: "https://integrate.api.nvidia.com/v1"
+  temperature: 0.2
