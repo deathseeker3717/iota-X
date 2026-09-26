@@ -33,6 +33,12 @@ class Orchestrator:
         metrics: Optional[MetricsCollector] = None,
         event_bus: Optional[EventBus] = None,
         max_iterations: int = 25,
+        planner: Optional[AgentInterface] = None,
+        researcher: Optional[AgentInterface] = None,
+        coder: Optional[AgentInterface] = None,
+        recovery: Optional[AgentInterface] = None,
+        tester: Optional[AgentInterface] = None,
+        verifier: Optional[VerificationInterface] = None,
     ) -> None:
         self.model_gateway = model_gateway
         self.router = router or AdaptiveRouter()
@@ -47,8 +53,19 @@ class Orchestrator:
 
         # Registry for agents (Arnav's agents: planner, research, coder, recovery)
         self.agents: Dict[str, AgentInterface] = {}
+        if planner:
+            self.agents["planner"] = planner
+        if researcher:
+            self.agents["researcher"] = researcher
+        if coder:
+            self.agents["coder"] = coder
+        if recovery:
+            self.agents["recovery"] = recovery
+        if tester:
+            self.agents["tester"] = tester
+
         # Verification subsystem
-        self.verifier: Optional[VerificationInterface] = None
+        self.verifier: Optional[VerificationInterface] = verifier
 
     def register_agent(self, role: str, agent: AgentInterface) -> None:
         """Register an agent implementation for a specific role/status."""
