@@ -45,7 +45,9 @@ export const Workspace: React.FC = () => {
     agentSteps,
     isAgentRunning,
     terminalHistory,
+    isTerminalExecuting,
     runTerminalCommand,
+    cancelTerminalCommand,
     clearTerminal,
     verificationResult,
     isRunningVerification,
@@ -200,6 +202,8 @@ export const Workspace: React.FC = () => {
               terminalHistory={terminalHistory}
               onRunTerminalCommand={runTerminalCommand}
               onClearTerminal={clearTerminal}
+              isTerminalExecuting={isTerminalExecuting}
+              onCancelTerminalCommand={cancelTerminalCommand}
               verificationResult={verificationResult}
               isRunningVerification={isRunningVerification}
               onRunVerification={runVerification}

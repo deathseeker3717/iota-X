@@ -27,6 +27,8 @@ interface BottomPanelProps {
   terminalHistory: TerminalOutput[];
   onRunTerminalCommand: (command: string) => void;
   onClearTerminal: () => void;
+  isTerminalExecuting?: boolean;
+  onCancelTerminalCommand?: () => void;
   verificationResult: VerificationResult;
   isRunningVerification: boolean;
   onRunVerification: () => void;
@@ -56,6 +58,8 @@ export const BottomPanel: React.FC<BottomPanelProps> = ({
   gitChanges,
   selectedGitFile,
   onSelectGitFile,
+  isTerminalExecuting,
+  onCancelTerminalCommand,
   agentSteps,
   isAgentRunning,
   onOpenFile,
@@ -180,6 +184,8 @@ export const BottomPanel: React.FC<BottomPanelProps> = ({
               history={terminalHistory}
               onRunCommand={onRunTerminalCommand}
               onClear={onClearTerminal}
+              isExecuting={isTerminalExecuting}
+              onCancelCommand={onCancelTerminalCommand}
             />
           )}
 

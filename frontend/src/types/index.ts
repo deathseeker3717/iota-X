@@ -6,6 +6,7 @@
 export * from './contract';
 export * from './chatContract';
 export * from './attachmentContract';
+export * from './terminalContract';
 
 import {
   RepositoryNode,
@@ -25,17 +26,6 @@ export type EditorTab = RepositoryFile & { isModified?: boolean };
 export type AIAction = ChatAction;
 export type UploadedFile = Attachment;
 export type ChatMessage = ContractChatMessage & { isStreaming?: boolean };
-
-export interface TerminalOutput {
-  id: string;
-  command: string;
-  stdout: string;
-  stderr: string;
-  exitCode: number;
-  durationSeconds: number;
-  status: 'running' | 'success' | 'failed';
-  timestamp: string;
-}
 
 export interface TestFailure {
   testName: string;

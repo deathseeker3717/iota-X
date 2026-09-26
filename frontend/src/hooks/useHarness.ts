@@ -4,6 +4,7 @@
  * Integrates Chat, Terminal, Verification, Git, and Agent Activity.
  * Adheres strictly to the Cross-Platform Contract.
  * The UI supports agent activity separately from chat conversations.
+ * Terminal commands route to the backend's controlled shell tool.
  */
 
 import { useCallback, useEffect, useState } from 'react';
@@ -16,16 +17,17 @@ import {
 import { AgentEvent } from '../types/chatContract';
 import { useChat } from './useChat';
 import { api } from '../services/api';
+import { terminalApi } from '../services/terminalApi';
 
 export function useHarness() {
   // Agent Activity State (populated from backend API and chat AgentEvents)
   const [agentSteps, setAgentSteps] = useState<AgentStep[]>([]);
   const [isAgentRunning, setIsAgentRunning] = useState<boolean>(false);
 
-  // Terminal State
+  // Terminal State (connected to backend controlled shell tool)
   const [terminalHistory, setTerminalHistory] = useState<TerminalOutput[]>([
     {
-      id: 'term_init',
+      id: 'term_init_1',
       command: 'pytest tests',
       stdout: `============================= test session starts ==============================
 collected 67 items
@@ -34,14 +36,17 @@ tests/test_context.py ..
 tests/test_tests_tool.py ....
 tests/test_tool_registry.py ..
 
-============================== 67 passed in 1.08s ==============================`,
+============================== 67 passed in 1.02s ==============================`,
       stderr: '',
       exitCode: 0,
-      durationSeconds: 1.08,
+      durationSeconds: 1.02,
       status: 'success',
       timestamp: 'Initial',
+      cwd: 'iota-X',
     },
   ]);
+  const [isTerminalExecuting, setIsTerminalExecuting] = useState<boolean>(false);
+  const [activeCommandId, setActiveCommandId] = useState<string | null>(null);
 
   // Verification State
   const [verificationResult, setVerificationResult] = useState<VerificationResult>({
@@ -54,7 +59,7 @@ tests/test_tool_registry.py ..
     lintPassed: true,
     requirementsSatisfied: true,
     failures: [],
-    durationSeconds: 1.08,
+    durationSeconds: 1.02,
   });
   const [isRunningVerification, setIsRunningVerification] = useState<boolean>(false);
 
@@ -130,19 +135,82 @@ tests/test_tool_registry.py ..
     loadInitial();
   }, []);
 
+  // Run controlled shell command via terminalApi
   const runTerminalCommand = useCallback(async (cmd: string) => {
     if (!cmd.trim()) return;
 
+    const tempId = `cmd_${Date.now()}`;
+    setActiveCommandId(tempId);
+    setIsTerminalExecuting(true);
+
+    const pendingItem: TerminalOutput = {
+      id: tempId,
+      command: cmd,
+      stdout: '',
+      stderr: '',
+      exitCode: null,
+      durationSeconds: 0,
+      status: 'running',
+      timestamp: new Date().toLocaleTimeString(),
+      cwd: 'iota-X',
+    };
+
+    setTerminalHistory((prev) => [...prev, pendingItem]);
+
     try {
-      const output = await api.runCommand(cmd);
-      setTerminalHistory((prev) => [...prev, output]);
+      const result = await terminalApi.executeCommand({
+        command: cmd,
+        workingDirectory: 'iota-X',
+      });
+
+      setTerminalHistory((prev) =>
+        prev.map((item) =>
+          item.id === tempId
+            ? {
+                id: result.id,
+                command: result.command,
+                stdout: result.stdout,
+                stderr: result.stderr,
+                exitCode: result.exitCode,
+                durationSeconds: result.durationSeconds,
+                status: result.status === 'success' ? 'success' : 'failed',
+                timestamp: new Date().toLocaleTimeString(),
+                cwd: 'iota-X',
+              }
+            : item
+        )
+      );
     } catch (err) {
-      console.error('Failed to execute command', err);
+      const errorMsg = err instanceof Error ? err.message : 'Command execution failed';
+      setTerminalHistory((prev) =>
+        prev.map((item) =>
+          item.id === tempId
+            ? {
+                ...item,
+                stderr: errorMsg,
+                exitCode: 1,
+                status: 'failed',
+              }
+            : item
+        )
+      );
+    } finally {
+      setIsTerminalExecuting(false);
+      setActiveCommandId(null);
     }
   }, []);
 
-  const clearTerminal = useCallback(() => {
+  const cancelTerminalCommand = useCallback(async () => {
+    if (activeCommandId) {
+      await terminalApi.cancelCommand(activeCommandId);
+      setIsTerminalExecuting(false);
+      setActiveCommandId(null);
+    }
+  }, [activeCommandId]);
+
+  const clearTerminal = useCallback(async () => {
     setTerminalHistory([]);
+    await terminalApi.clearHistory();
   }, []);
 
   const runVerification = useCallback(async (filter?: string) => {
@@ -179,9 +247,11 @@ tests/test_tool_registry.py ..
     agentSteps,
     isAgentRunning,
 
-    // Terminal
+    // Terminal (Controlled Shell Tool)
     terminalHistory,
+    isTerminalExecuting,
     runTerminalCommand,
+    cancelTerminalCommand,
     clearTerminal,
 
     // Verification
