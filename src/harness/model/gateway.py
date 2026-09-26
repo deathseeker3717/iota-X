@@ -8,6 +8,7 @@ from typing import Any, Dict, List, Optional, Type, TypeVar, Union
 from harness.model.client import NvidiaNimClient
 from harness.model.interface import ModelInterface
 from harness.model.nvidia_nim import NvidiaNimProvider
+from harness.model.ollama import OllamaClient, OllamaProvider
 from harness.model.provider import ModelProvider
 from harness.model.schemas import Message, ModelRequest, ModelResponse, ToolDefinition
 
@@ -18,7 +19,7 @@ class ModelGateway:
     """Gateway separating agents from specific model providers.
     
     Agents communicate exclusively with ModelGateway without knowing
-    the underlying provider implementation (e.g. NVIDIA NIM vs evaluation model).
+    the underlying provider implementation (e.g. NVIDIA NIM vs Ollama vs evaluation model).
     They simply call model.generate(...) or model.generate_structured(...).
     """
 
@@ -33,14 +34,22 @@ class ModelGateway:
     ) -> "ModelGateway":
         """Instantiate ModelGateway from a configuration dictionary."""
         model_cfg = config.get("model", {})
-        provider_name = model_cfg.get("provider", "nvidia_nim")
-        model_name = model_cfg.get("model_name", "meta/llama-3.1-70b-instruct")
-        base_url = model_cfg.get("base_url", "https://integrate.api.nvidia.com/v1")
+        provider_name = model_cfg.get("provider", "nvidia_nim").lower()
 
         if provider_name in ("nvidia_nim", "nim", "default"):
+            model_name = model_cfg.get("model_name", "meta/llama-3.1-70b-instruct")
+            base_url = model_cfg.get("base_url", "https://integrate.api.nvidia.com/v1")
             client = NvidiaNimProvider(
                 model_name=model_name,
                 api_key=api_key or os.getenv("AI_API_KEY"),
+                base_url=base_url,
+            )
+            return cls(provider=client)
+        elif provider_name in ("ollama", "local"):
+            model_name = model_cfg.get("model_name", "gpt-oss:20b")
+            base_url = model_cfg.get("base_url", os.getenv("OLLAMA_BASE_URL", "http://localhost:11434/v1"))
+            client = OllamaProvider(
+                model_name=model_name,
                 base_url=base_url,
             )
             return cls(provider=client)

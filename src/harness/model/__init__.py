@@ -4,6 +4,7 @@ from harness.model.client import NvidiaNimClient
 from harness.model.gateway import ModelGateway
 from harness.model.interface import ModelInterface
 from harness.model.nvidia_nim import NvidiaNimProvider
+from harness.model.ollama import OllamaClient, OllamaProvider
 from harness.model.provider import ModelProvider
 from harness.model.schemas import (
     CodeEdit,
@@ -23,6 +24,8 @@ __all__ = [
     "ModelProvider",
     "NvidiaNimClient",
     "NvidiaNimProvider",
+    "OllamaClient",
+    "OllamaProvider",
     "Message",
     "ModelRequest",
     "ModelResponse",
