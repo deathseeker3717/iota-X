@@ -108,3 +108,39 @@ def test_orchestrator_end_to_end_flow():
     assert len(final_state.changes) > 0
     assert len(final_state.test_results) > 0
     assert final_state.test_results[-1]["passed"] is True
+
+class MockFlakyVerifier:
+    def __init__(self):
+        self.invocations = 0
+
+    def verify(self, state: HarnessState):
+        self.invocations += 1
+        # Fails the first time, passes the second time
+        if self.invocations == 1:
+            return {"passed": False, "message": "Syntax error"}
+        return {"passed": True, "message": "All fixed"}
+
+
+def test_orchestrator_failure_recovery_flow():
+    orchestrator = Orchestrator(max_iterations=10)
+
+    planner = DummyAgent("planner")
+    researcher = DummyAgent("researcher")
+    coder = DummyAgent("coder")
+    recovery = DummyAgent("recovery")
+    verifier = MockFlakyVerifier()
+
+    orchestrator.register_agent("planner", planner)
+    orchestrator.register_agent("researcher", researcher)
+    orchestrator.register_agent("coder", coder)
+    orchestrator.register_agent("recovery", recovery)
+    orchestrator.register_verifier(verifier)
+
+    final_state = orchestrator.run("Fix issue: test recovery")
+
+    assert final_state.status == HarnessStatus.COMPLETED
+    assert planner.invocations == 1
+    assert researcher.invocations == 1
+    assert coder.invocations == 2  # Once for initial coding, once after recovery
+    assert recovery.invocations == 1
+    assert verifier.invocations == 3
