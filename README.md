@@ -9,19 +9,24 @@ The **AI Coding Harness** is an orchestrated coding platform designed around a f
 The system operates under a single **Central Orchestrator** managing specialized agent roles, state transitions, tool execution, and context.
 
 ```
-Central Orchestrator
+Central Orchestrator (Aditya)
     |
-    +-- Planner Agent
-    +-- Repository Research Agent
-    +-- Coding Agent
-    +-- Verification Agent
-    +-- Recovery Agent
+    +-- AI Brain / Model & Agents (Shaurya)
+    |     +-- Model Gateway & NIM
+    |     +-- Planner, Coder, Critic
     |
-    +-- Shared Tool Layer
-    +-- Context Manager
-    +-- Repository Intelligence
-    +-- Model Abstraction Layer
-    +-- Open-source Agent Adapters
+    +-- AI Hands / Tools & Repository (Arnav)
+    |     +-- Search, File Ops, Shell Exec
+    |     +-- Repository Intelligence
+    |
+    +-- AI Memory & Observability (Aryan)
+          +-- Context Manager & Selector
+          +-- Multi-Tier Memory (Short-Term, Task, Repo)
+          +-- Context Compressor & Fact Extractor
+          +-- Execution Tracer & ASCII Trace
+          +-- Metrics & Token / Cost Tracker
+          +-- Agent Trajectory & Diagnostics
+          +-- EventBus Pub/Sub
 ```
 
 ### Core Architectural Principles
@@ -32,7 +37,8 @@ Central Orchestrator
   - Agent routing
   - Execution flow
   - Iteration limits
-  - Context selection
+  - Context selection & Memory
+  - Observability & Tracing
   - Failure recovery
 - **Structured Communication**: Agents communicate via structured state schemas rather than uncontrolled natural-language conversations.
 
@@ -53,15 +59,36 @@ ai-coding-harness/
 │       ├── main.py
 │       │
 │       ├── orchestrator/
-│       ├── agents/
-│       ├── model/
+│       │   ├── orchestrator.py
+│       │   ├── router.py
+│       │   ├── state.py
+│       │   └── workflow.py
+│       │
 │       ├── context/
+│       │   ├── manager.py
+│       │   ├── memory.py
+│       │   ├── compressor.py
+│       │   └── selector.py
+│       │
+│       ├── observability/
+│       │   ├── tracer.py
+│       │   ├── events.py
+│       │   ├── metrics.py
+│       │   └── logger.py
+│       │
+│       ├── model/
+│       ├── agents/
 │       ├── tools/
 │       ├── repository/
 │       ├── verification/
 │       └── adapters/
 │
 ├── tests/
+│   ├── test_context_manager.py
+│   ├── test_observability.py
+│   ├── test_orchestrator.py
+│   ├── test_orchestrator_integration.py
+│   └── test_model_gateway.py
 │
 └── configs/
     └── config.yaml
