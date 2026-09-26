@@ -1,6 +1,6 @@
 """Subsystem interfaces and workflow contracts for team integration."""
 
-from typing import Any, Dict, List, Protocol, runtime_checkable
+from typing import Any, Dict, List, Optional, Protocol, runtime_checkable
 
 from harness.orchestrator.state import AgentResult, HarnessState
 
@@ -32,8 +32,22 @@ class ToolLayerInterface(Protocol):
 
 @runtime_checkable
 class VerificationInterface(Protocol):
-    """Contract for Aryan's verification subsystem."""
+    """Contract for verification subsystems."""
 
     def verify(self, state: HarnessState) -> Dict[str, Any]:
         """Run verification suite, checks, and regression tests."""
+        ...
+
+
+@runtime_checkable
+class ContextManagerInterface(Protocol):
+    """Contract for Aryan's Context Management subsystem."""
+
+    def get_context_for_agent(self, role: str, state: HarnessState, token_budget: Optional[int] = None) -> Any:
+        ...
+
+    def update_from_state(self, state: HarnessState) -> None:
+        ...
+
+    def record_discovery(self, fact: str, category: str = "general", source_agent: Optional[str] = None) -> Any:
         ...
