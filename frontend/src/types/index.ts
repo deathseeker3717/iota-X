@@ -49,7 +49,6 @@ export interface VerificationResult {
   durationSeconds: number;
 }
 
-
 export interface AgentStep {
   id: string;
   title: string;

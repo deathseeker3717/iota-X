@@ -14,7 +14,6 @@ import {
   AgentStep,
   GitChange,
   GitCommit,
-  GitDiff,
   GitStatus,
   TerminalOutput,
   VerificationResult,
@@ -38,17 +37,14 @@ interface BottomPanelProps {
   onAskAgentToFix?: (msg: string) => void;
   gitStatus?: GitStatus | null;
   gitChanges: GitChange[];
-  gitCommits?: GitCommit[];
-  activeGitDiff?: GitDiff | null;
   selectedGitFile: string | null;
-  selectedGitCommit?: GitCommit | null;
-  gitCommitDetails?: string | null;
-  isGitLoading?: boolean;
-  isGitRefreshing?: boolean;
-  onRefreshGit?: () => void;
   onSelectGitFile: (file: string) => void;
-  onSelectGitCommit?: (commit: GitCommit) => void;
-  onClearGitCommit?: () => void;
+  gitCommits?: GitCommit[];
+  selectedCommit?: GitCommit | null;
+  selectedCommitDiff?: string;
+  onSelectCommit?: (hash: string) => void;
+  isGitLoading?: boolean;
+  onRefreshGit?: () => void;
   agentSteps: AgentStep[];
   isAgentRunning: boolean;
   onOpenFile?: (path: string) => void;
@@ -68,19 +64,16 @@ export const BottomPanel: React.FC<BottomPanelProps> = ({
   isRunningVerification,
   onRunVerification,
   onAskAgentToFix,
-  gitStatus,
   gitChanges,
-  gitCommits = [],
-  activeGitDiff,
   selectedGitFile,
-  selectedGitCommit,
-  gitCommitDetails,
-  isGitLoading = false,
-  isGitRefreshing = false,
-  onRefreshGit,
   onSelectGitFile,
-  onSelectGitCommit,
-  onClearGitCommit,
+  gitStatus,
+  gitCommits,
+  selectedCommit,
+  selectedCommitDiff,
+  onSelectCommit,
+  isGitLoading,
+  onRefreshGit,
   isTerminalExecuting,
   onCancelTerminalCommand,
   agentSteps,
@@ -224,19 +217,16 @@ export const BottomPanel: React.FC<BottomPanelProps> = ({
 
           {activeTab === 'git' && (
             <GitDiffView
-              status={gitStatus}
+              status={gitStatus || null}
               changes={gitChanges}
-              commits={gitCommits}
-              activeDiff={activeGitDiff}
               selectedFile={selectedGitFile}
-              selectedCommit={selectedGitCommit}
-              commitDetails={gitCommitDetails}
-              isLoading={isGitLoading}
-              isRefreshing={isGitRefreshing}
-              onRefresh={onRefreshGit}
               onSelectFile={onSelectGitFile}
-              onSelectCommit={onSelectGitCommit}
-              onClearCommit={onClearGitCommit}
+              commits={gitCommits}
+              selectedCommit={selectedCommit}
+              selectedCommitDiff={selectedCommitDiff}
+              onSelectCommit={onSelectCommit}
+              isLoading={isGitLoading}
+              onRefresh={onRefreshGit}
               onOpenFile={onOpenFile}
             />
           )}

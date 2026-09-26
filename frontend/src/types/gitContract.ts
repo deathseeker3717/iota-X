@@ -1,45 +1,44 @@
 /**
- * Shared Git Integration Contract Models for Frontend
+ * AI Coding Harness — Shared Cross-Platform Git Integration Contract
  *
- * Models:
- * - GitChange: Represents modified, added, deleted, or untracked file
- * - GitStatus: Working tree status, branches, ahead/behind
- * - GitDiff: Unified diff representation
- * - GitCommit: Structured commit log entry
+ * Defines models and API interfaces for repository inspection:
+ * - git_status: Working directory status (changed, staged, untracked)
+ * - git_diff: Unified diffs of modifications
+ * - git_log: Commit history logs
+ * - git_show: Details or file snapshots of specific commits
+ *
+ * Clients MUST NOT execute Git commands directly on host machines.
  */
 
-export type GitChangeStatus = 'modified' | 'added' | 'deleted' | 'untracked';
+export type GitFileStatus = 'modified' | 'added' | 'deleted' | 'untracked';
 
 export interface GitChange {
   file: string;
-  status: GitChangeStatus;
-  staged: boolean;
+  status: GitFileStatus;
   additions: number;
   deletions: number;
-  oldPath?: string;
   diff?: string;
+  staged?: boolean;
+  oldPath?: string;
 }
 
 export interface GitStatus {
   branch: string;
   isClean: boolean;
-  changes: GitChange[];
   stagedFiles: string[];
   unstagedFiles: string[];
   untrackedFiles: string[];
-  ahead: number;
-  behind: number;
-  rawOutput?: string;
+  changes: GitChange[];
+  rawOutput: string;
 }
 
 export interface GitDiff {
-  filePath?: string;
+  file?: string;
+  unifiedDiff: string;
   staged: boolean;
   commit?: string;
-  diffText: string;
   additions: number;
   deletions: number;
-  changes?: GitChange[];
 }
 
 export interface GitCommit {
@@ -48,5 +47,23 @@ export interface GitCommit {
   author: string;
   date: string;
   message: string;
-  parentHashes?: string[];
+  diff?: string;
+}
+
+export interface GitDiffOptions {
+  staged?: boolean;
+  filePath?: string;
+  commit?: string;
+}
+
+export interface GitLogOptions {
+  maxCount?: number;
+  filePath?: string;
+}
+
+export interface IGitApiService {
+  getStatus(): Promise<GitStatus>;
+  getDiff(options?: GitDiffOptions): Promise<GitDiff>;
+  getLog(options?: GitLogOptions): Promise<GitCommit[]>;
+  getShow(commitOrRef?: string, filePath?: string): Promise<string>;
 }
