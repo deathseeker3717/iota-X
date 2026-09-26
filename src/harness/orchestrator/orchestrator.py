@@ -197,8 +197,11 @@ class Orchestrator:
                 state.test_results.append(v_result)
                 passed = True
 
+            msg = v_result.get("message")
+            error_msg = str(msg) if msg is not None else None
+
             phase_dur = time.time() - phase_start
-            self.tracer.end_phase(span, success=passed, error=v_result.get("message") if not passed else None)
+            self.tracer.end_phase(span, success=passed, error=error_msg if not passed else None)
 
             if self.trajectory:
                 self.trajectory.record_step(
@@ -208,7 +211,7 @@ class Orchestrator:
                     outputs=v_result,
                     success=passed,
                     duration=phase_dur,
-                    error_message=v_result.get("message") if not passed else None,
+                    error_message=error_msg if not passed else None,
                 )
 
         else:
