@@ -60,6 +60,18 @@ class EventBus:
         if event_type not in self._subscribers:
             self._subscribers[event_type] = []
         self._subscribers[event_type].append(callback)
+    def unsubscribe(
+        self,
+        callback: Callable[[HarnessEvent], None],
+        event_type: Optional[EventType] = None,
+    ) -> None:
+        """Remove a previously registered callback. No‑op if not found."""
+        lst = self._subscribers.get(event_type)
+        if lst and callback in lst:
+            lst.remove(callback)
+            if not lst:
+                del self._subscribers[event_type]
+
 
     def publish(self, event: HarnessEvent) -> None:
         """Publish an event to all interested subscribers."""
