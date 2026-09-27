@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
+  <defs>
+    <linearGradient id="bgGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0F172A" />
+      <stop offset="100%" stop-color="#1E293B" />
+    </linearGradient>
+    <linearGradient id="iotaGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#38BDF8" />
+      <stop offset="100%" stop-color="#818CF8" />
+    </linearGradient>
+    <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="15" result="blur" />
+      <feComposite in="SourceGraphic" in2="blur" operator="over" />
+    </filter>
+  </defs>
+
+  <!-- Background base for the App Icon -->
+  <rect width="1024" height="1024" rx="225" fill="url(#bgGradient)" />
+
+  <!-- Code brackets -->
+  <path d="M 320 280 L 120 512 L 320 744" fill="none" stroke="#475569" stroke-width="60" stroke-linecap="round" stroke-linejoin="round" />
+  <path d="M 704 280 L 904 512 L 704 744" fill="none" stroke="#475569" stroke-width="60" stroke-linecap="round" stroke-linejoin="round" />
+
+  <!-- Central "Iota" Symbol (Stylized 'i' or core) -->
+  <g filter="url(#glow)">
+    <circle cx="512" cy="320" r="70" fill="url(#iotaGradient)" />
+    <rect x="442" y="440" width="140" height="320" rx="70" fill="url(#iotaGradient)" />
+  </g>
+</svg>
