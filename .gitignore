@@ -46,3 +46,6 @@ htmlcov/
 *.log
 scratch/
 node_modules/
+frontend/node_modules/
+frontend/dist/
+.DS_Store
