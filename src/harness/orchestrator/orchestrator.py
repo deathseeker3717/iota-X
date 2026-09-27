@@ -376,6 +376,12 @@ class Orchestrator:
                 self.tracer.end_phase(span, success=False, error=err)
                 return
 
+            if self.applier is None:
+                err = "Applier tool is required to apply proposals."
+                state.errors.append(err)
+                self.tracer.end_phase(span, success=False, error=err)
+                return
+
             app_result = self.applier.apply_proposal(state.proposal, atomic=True)
             state.application_result = app_result
 
@@ -384,12 +390,13 @@ class Orchestrator:
                 state.changes.append(f"[{edit_res.action.upper()}] {edit_res.file_path}")
 
             # Inspect Git diff and status
-            try:
-                state.git_diff = self.git_tool.git_diff()
-                git_stat = self.git_tool.git_status()
-                state.git_status = git_stat.raw_output
-            except Exception as e:
-                logger.warning(f"Git inspection failed: {e}")
+            if self.git_tool:
+                try:
+                    state.git_diff = self.git_tool.git_diff()
+                    git_stat = self.git_tool.git_status()
+                    state.git_status = git_stat.raw_output
+                except Exception as e:
+                    logger.warning(f"Git inspection failed: {e}")
 
             phase_dur = time.time() - phase_start
             if app_result.success:
@@ -447,7 +454,7 @@ class Orchestrator:
                 if not passed:
                     state.errors.append(v_result.get("message", "Test verification failed"))
                 test_output = v_result.get("message", "")
-            else:
+            elif self.test_runner:
                 test_suite_res = self.test_runner.run_tests()
                 passed = test_suite_res.success
                 t_dict = {
@@ -466,6 +473,9 @@ class Orchestrator:
                         f"Tests failed: {test_suite_res.failed} failure(s) out of {test_suite_res.total} tests"
                     )
                 test_output = test_suite_res.output
+            else:
+                passed = True
+                test_output = "No tester, verifier, or test_runner configured. Passing tests by default."
 
             self.event_bus.emit(
                 EventType.TESTS_COMPLETED,

@@ -59,7 +59,7 @@ def error_response(message: str, code: str, status_code: int = 400) -> JSONRespo
 @app.post("/api/chat/message", response_model=ChatMessageResponse)
 def chat_message(request: ChatMessageRequest, orchestrator=Depends(get_orchestrator)):
     try:
-        state: HarnessState = orchestrator.run(task=request.message, repo_path=request.repo_path)
+        state: HarnessState = orchestrator.run(task=request.message, repo_path=request.repo_path or ".")
         task_id = (
             getattr(state, "metadata", {})
             .get("trajectory", {})
@@ -128,7 +128,7 @@ def verification_run(req: VerificationRunRequest, orchestrator=Depends(get_orche
     if verifier is None:
         return error_response("Verifier not configured", "VERIFIER_MISSING", 400)
     # Create a fresh state for verification
-    state = HarnessState(task=req.task, repo_path=req.repo_path)
+    state = HarnessState(task=req.task, repo_path=req.repo_path or ".")
     try:
         result = verifier.verify(state)
         return VerificationRunResponse(success=True, result=result)
@@ -139,7 +139,7 @@ def verification_run(req: VerificationRunRequest, orchestrator=Depends(get_orche
 def verification_fix(req: VerificationRunRequest, orchestrator=Depends(get_orchestrator)):
     # Re‑run orchestrator which will invoke recovery if needed
     try:
-        state = orchestrator.run(task=req.task, repo_path=req.repo_path)
+        state = orchestrator.run(task=req.task, repo_path=req.repo_path or ".")
         return VerificationFixResponse(success=True, status=state.status.value)
     except Exception as exc:
         return error_response(str(exc), "RECOVERY_ERROR", 500)
@@ -187,18 +187,18 @@ async def _event_generator(
             yield f"event: {hist_event.event_type.value}\n"
             yield f"data: {payload}\n\n"
 
-    # Live events
-    while not stopped:
-        if await request.is_disconnected():
-            stopped = True
-            break
-        try:
-            event = await asyncio.wait_for(queue.get(), timeout=1.0)
-        except asyncio.TimeoutError:
-            continue
-        payload = json.dumps(_sanitize_event_dict(event.to_dict()))
-        yield f"event: {event.event_type.value}\n"
-        yield f"data: {payload}\n\n"
+        # Live events
+        while not stopped:
+            if await request.is_disconnected():
+                stopped = True
+                break
+            try:
+                event = await asyncio.wait_for(queue.get(), timeout=1.0)
+            except asyncio.TimeoutError:
+                continue
+            payload = json.dumps(_sanitize_event_dict(event.to_dict()))
+            yield f"event: {event.event_type.value}\n"
+            yield f"data: {payload}\n\n"
     finally:
         event_bus.unsubscribe(_callback, None)
 @app.get("/api/events")
