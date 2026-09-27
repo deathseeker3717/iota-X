@@ -23,8 +23,9 @@ class ModelGateway:
     They simply call model.generate(...) or model.generate_structured(...).
     """
 
-    def __init__(self, provider: ModelInterface) -> None:
+    def __init__(self, provider: ModelInterface, backup_provider: Optional[ModelInterface] = None) -> None:
         self.provider = provider
+        self.backup_provider = backup_provider
 
     @classmethod
     def from_config(
@@ -33,30 +34,43 @@ class ModelGateway:
         api_key: Optional[str] = None,
     ) -> "ModelGateway":
         """Instantiate ModelGateway from a configuration dictionary."""
-        model_cfg = config.get("model", {})
-        provider_name = model_cfg.get("provider", "nvidia_nim").lower()
+        
+        def create_provider(provider_name: str, model_cfg: Dict[str, Any]) -> ModelInterface:
+            if provider_name == "mock":
+                from harness.model.mock import MockProvider
+                should_fail = model_cfg.get("mock_fail", False)
+                return MockProvider(should_fail=should_fail)
+            elif provider_name in ("nvidia_nim", "nim", "default"):
+                model_name = model_cfg.get("model_name", "meta/llama-3.1-70b-instruct")
+                base_url = model_cfg.get("base_url", "https://integrate.api.nvidia.com/v1")
+                return NvidiaNimProvider(
+                    model_name=model_name,
+                    api_key=api_key or os.getenv("AI_API_KEY"),
+                    base_url=base_url,
+                )
+            elif provider_name in ("ollama", "local"):
+                model_name = model_cfg.get("model_name", "gpt-oss:20b")
+                base_url = model_cfg.get("base_url", os.getenv("OLLAMA_BASE_URL", "http://localhost:11434/v1"))
+                timeout = float(model_cfg.get("timeout", os.getenv("OLLAMA_TIMEOUT", "300.0")))
+                return OllamaProvider(
+                    model_name=model_name,
+                    base_url=base_url,
+                    timeout=timeout,
+                )
+            else:
+                raise ValueError(f"Unsupported model provider: '{provider_name}'")
 
-        if provider_name in ("nvidia_nim", "nim", "default"):
-            model_name = model_cfg.get("model_name", "meta/llama-3.1-70b-instruct")
-            base_url = model_cfg.get("base_url", "https://integrate.api.nvidia.com/v1")
-            client = NvidiaNimProvider(
-                model_name=model_name,
-                api_key=api_key or os.getenv("AI_API_KEY"),
-                base_url=base_url,
-            )
-            return cls(provider=client)
-        elif provider_name in ("ollama", "local"):
-            model_name = model_cfg.get("model_name", "gpt-oss:20b")
-            base_url = model_cfg.get("base_url", os.getenv("OLLAMA_BASE_URL", "http://localhost:11434/v1"))
-            timeout = float(model_cfg.get("timeout", os.getenv("OLLAMA_TIMEOUT", "300.0")))
-            client = OllamaProvider(
-                model_name=model_name,
-                base_url=base_url,
-                timeout=timeout,
-            )
-            return cls(provider=client)
-        else:
-            raise ValueError(f"Unsupported model provider: '{provider_name}'")
+        model_cfg = config.get("model", {})
+        provider_name = model_cfg.get("provider", os.getenv("MODEL_PROVIDER", "nvidia_nim")).lower()
+        primary_provider = create_provider(provider_name, model_cfg)
+        
+        backup_provider = None
+        fallback_name = model_cfg.get("fallback_provider", os.getenv("MODEL_FALLBACK_PROVIDER"))
+        if fallback_name:
+            # Re-use config but override provider name
+            backup_provider = create_provider(fallback_name.lower(), model_cfg)
+            
+        return cls(provider=primary_provider, backup_provider=backup_provider)
 
     def generate(
         self,
@@ -94,8 +108,18 @@ class ModelGateway:
             response_format=response_format,
             extra_params=extra_params,
         )
-        return self.provider.generate(request)
+        import logging
+        logger = logging.getLogger(__name__)
 
+        try:
+            return self.provider.generate(request)
+        except Exception as e:
+            if self.backup_provider:
+                logger.warning(f"Primary provider failed: {e}. Trying fallback provider.")
+                return self.backup_provider.generate(request)
+            else:
+                logger.error(f"Primary provider failed and no fallback configured: {e}")
+                raise e
     def generate_structured(
         self,
         messages: Union[List[Message], List[Dict[str, str]]],

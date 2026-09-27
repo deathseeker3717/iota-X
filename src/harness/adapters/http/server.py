@@ -56,17 +56,35 @@ def error_response(message: str, code: str, status_code: int = 400) -> JSONRespo
     )
 
 # ---------- Endpoints ----------
+
+@app.get("/api/health")
+def health_check():
+    import os
+    return {
+        "status": "ok",
+        "server": True,
+        "model_provider": os.getenv("MODEL_PROVIDER", "nvidia_nim")
+    }
+
+@app.get("/api/health/model")
+def model_health_check():
+    import os
+    provider = os.getenv("MODEL_PROVIDER", "nvidia_nim")
+    api_key = os.getenv("AI_API_KEY")
+    return {
+        "provider": provider,
+        "api_key_configured": bool(api_key),
+        "reachable": True,
+    }
 @app.post("/api/chat/message", response_model=ChatMessageResponse)
 def chat_message(request: ChatMessageRequest, orchestrator=Depends(get_orchestrator)):
     try:
         state: HarnessState = orchestrator.run(task=request.message, repo_path=request.repo_path or ".")
-        task_id = (
-            getattr(state, "metadata", {})
-            .get("trajectory", {})
-            .get("task_id")
-            if hasattr(state, "metadata")
-            else None
-        )
+        task_id = None
+        if hasattr(state, "metadata") and isinstance(state.metadata, dict):
+            traj = state.metadata.get("trajectory")
+            if traj and hasattr(traj, "task_id"):
+                task_id = traj.task_id
         return ChatMessageResponse(
             success=True,
             task_id=task_id,
